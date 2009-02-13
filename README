@@ -1,1 +1,3 @@
 I'm making my way thru the Programming Collective Intelligence book but all of the code is Python.  I'm reworking what I can into Ruby.  I know there are others that have done the same but I wanted to start from a clean slate.
+
+For Chapter 3, you'll need the simple-rss gem.
