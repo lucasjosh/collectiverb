@@ -32,9 +32,10 @@ def pearson(v1, v2)
   sum1_sq = v1.inject(0) {|sum1_sq, n| sum1_sq + n ** 2}
   sum2_sq = v2.inject(0) {|sum2_sq, n| sum2_sq + n ** 2}
   
+ 
   p_sum = 0
-  0.upto(v1.size) do |i|
-    p_sum += v1[i] * v2[i]
+  0.upto(v1.size - 1) do |i|
+    p_sum += (v1[i] * v2[i])
   end
   
   num = p_sum - (sum1*sum2/v1.size)
@@ -48,17 +49,17 @@ def hcluster(rows, distance = :pearson)
   current_clust_id = -1
   clust = Array.new
   
-  0.upto(rows.size) do |i|
-    clust << BiCluster.new(rows[i], nil, nil. 0.0, i)
+  0.upto(rows.size - 1) do |i|
+    clust << BiCluster.new(rows[i], nil, nil, 0.0, i)
   end
   
   while clust.size > 1
     lowestpair = [0, 1]
-    clostest = method(distance).call(clust[0].vec, clust[1].vec)
+    closest = method(distance).call(clust[0].vec, clust[1].vec)
     
-    0.upto(clust.size) do |i|
+    0.upto(clust.size - 1) do |i|
       j = i + 1
-      j.upto(clust.size) do |ij|
+      j.upto(clust.size - 1) do |ij|
         unless distances.key?([clust[i].id, clust[ij].id])
           distances[[clust[i].id, clust[ij].id]] = method(distance).call(clust[i].vec, clust[ij].vec)
         end
@@ -72,7 +73,7 @@ def hcluster(rows, distance = :pearson)
     end
     
     mergevec = Array.new
-    0.upto(clust[0].vec.size) do |i|
+    0.upto(clust[0].vec.size - 1) do |i|
       mergevec << (clust[lowestpair[0]].vec[i] + clust[lowestpair[1]].vec[i]) / 2.0
     end
     
@@ -85,3 +86,25 @@ def hcluster(rows, distance = :pearson)
   
   clust[0]
 end
+
+def printclust(clust, labels = nil, n = 0)
+  0.upto(n) {|f| puts ' '}
+  if clust.id < 0
+    puts '-'
+  else
+    if labels.nil?
+      puts clust.id
+    else
+      puts labels[clust.id]
+    end
+  end
+  printclust(clust.left, labels, n+1) if clust.left
+  printclust(clust.right, labels, n+1) if clust.right
+  
+end
+
+
+blognames, words, data = readfile('blogdata1.txt')
+clusters = hcluster(data)
+printclust(clusters, blognames)
+
