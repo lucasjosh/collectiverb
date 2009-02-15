@@ -115,17 +115,85 @@ def rotate_matrix(data)
   new_data
 end
 
+def kcluster(rows, distance = :pearson, k = 4)
+  ranges = Array.new
+  rows.first.size.times do |i|
+    column = rows.map {|row| row[i]}
+    ranges << [column.min, column.max]
+  end
+  
+  clusters = Array.new
+  k.times do |j|
+    clusters[j] = Array.new
+    rows.first.size.times do |i|
+      clusters[j] << (rand * (ranges[i][1] = ranges[i][0]) + ranges[i][0])
+    end
+  end
+  
+  bestmatches, lastmatches = nil, nil
+  
+  99.times do |t|
+    puts "Iteration #{t}"
+    bestmatches = Array.new
+    k.times {|i| bestmatches[i] = []}    
+    
+    rows.size.times do |j|
+      row = rows[j]
+      bestmatch = 0
+      k.times do |i|
+        d = method(distance).call(clusters[i], row)
+        bd = method(distance).call(clusters[bestmatch], row)
+        bestmatch = i 
+      end
+      bestmatches[bestmatch] << j
+    end
+    break if bestmatches==lastmatches
+    lastmatches=bestmatches
+    
+    k.times do |i|
+      avgs = [0.0] * rows.first.size
+      if bestmatches[i].size > 0
+        bestmatches[i].each do |rowid|
+          rows[rowid].size.times do |m|
+            avgs[m] += rows[rowid][m]
+          end
+        end
+        avgs.size.times do |j|
+          avgs[j] /= bestmatches[i].size
+        end
+        clusters[i] = avgs
+      end
+    end
+  end
+  bestmatches
+end
+
+def tanimoto(v1, v2)
+  c1, c2, shr = 0, 0, 0
+  
+  v1.size.times do |i|
+    c1 += 1 if v1[i] != 0
+    c2 += 1 if v2[i] != 0
+    shr += 1 if v1[i] != 0 && v2[i] != 0
+  end
+  1.0 - (shr.to_f / (c1 + c2 - shr))
+end
 
 
 
-
-blognames, words, data = readfile('blogdata1.txt')
-clusters = hcluster(data)
-#printclust(clusters, blognames)
 require 'graph'
-Graph.draw_dendogram(clusters, blognames, 'blogcluster.png')
+#blognames, words, data = readfile('blogdata1.txt')
+# clusters = hcluster(data)
+# #printclust(clusters, blognames)
+# require 'graph'
+# Graph.draw_dendogram(clusters, blognames, 'blogcluster.png')
+# 
+# rdata = rotate_matrix(data)
+# wordclusters = hcluster(rdata)
+# Graph.draw_dendogram(wordclusters, words, 'wordcluster.png')
 
-rdata = rotate_matrix(data)
-wordclusters = hcluster(rdata)
-Graph.draw_dendogram(wordclusters, words, 'wordcluster.png')
+#kclusters = kcluster(data, :pearson, 10)
 
+wants, people, data = readfile('zebo.txt')
+clust = hcluster(data, :tanimoto)
+Graph.draw_dendogram(clust, wants, 'zebo.png')
