@@ -103,8 +103,29 @@ def printclust(clust, labels = nil, n = 0)
   
 end
 
+def rotate_matrix(data)
+  new_data = Array.new
+  data.size.times do |i|
+    new_row = Array.new
+    data.size.times do |j|
+      new_row << data[i][j]
+    end
+    new_data << new_row
+  end
+  new_data
+end
+
+
+
+
 
 blognames, words, data = readfile('blogdata1.txt')
 clusters = hcluster(data)
-printclust(clusters, blognames)
+#printclust(clusters, blognames)
+require 'graph'
+Graph.draw_dendogram(clusters, blognames, 'blogcluster.png')
+
+rdata = rotate_matrix(data)
+wordclusters = hcluster(rdata)
+Graph.draw_dendogram(wordclusters, words, 'wordcluster.png')
 

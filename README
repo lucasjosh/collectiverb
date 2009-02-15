@@ -1,3 +1,9 @@
 I'm making my way thru the Programming Collective Intelligence book but all of the code is Python.  I'm reworking what I can into Ruby.  I know there are others that have done the same but I wanted to start from a clean slate.
 
-For Chapter 3, you'll need the simple-rss gem.
+Chapter 3 requirements:
+simple-rss gem
+RMagick
+	If you are on Leopard, use this: http://onrails.org/articles/2007/11/03/installing-rmagick-on-leopard-without-macports-or-fink 
+	or
+	http://pastie.org/282226
+	
