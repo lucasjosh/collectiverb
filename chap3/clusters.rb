@@ -179,6 +179,70 @@ def tanimoto(v1, v2)
   1.0 - (shr.to_f / (c1 + c2 - shr))
 end
 
+def scaledown(data, rate = 0.01, distance = :pearson)
+  n = data.size
+  
+  realdist = (0...n).map do |i|
+    (0...n).map do |j|
+      method(distance).call(data[i], data[j])
+    end
+  end
+  
+  outer_sum = 0.0
+  
+  # Randomly initialize the starting points of the locations in 2D
+  loc = [[rand, rand]] * n
+  fake_dist = [[0.0] * n] * n
+  
+  last_error = nil
+  999.times do |m|
+    # Find projected distances
+    n.times do |i|
+      n.times do |j|
+        sum = (0..loc[i].size - 1).inject(0) do |memo, x|
+          memo + (loc[i][x] - loc[j][x]) ** 2
+        end
+        fake_dist[i][j] = Math.sqrt(sum) if sum > 0
+      end
+    end
+    
+    # Move points
+    grad = [[0.0, 0.0]] * n
+    
+    total_error = 0
+    n.times do |k|
+      n.times do |j|
+        next if j == k
+        # The error is percent difference between the distances
+        error_term = (fake_dist[j][k] - realdist[j][k]) / realdist[j][k]
+        
+        # Each point needs to be moved away from or towards the other
+        # piont in proportion to how much error it has
+        grad[k][0] += ((loc[k][0] - loc[j][0]) / fake_dist[j][k]) * error_term
+        grad[k][1] += ((loc[k][1] - loc[j][1]) / fake_dist[j][k]) * error_term
+        
+        # Keep track of the total error
+        total_error += error_term.abs
+      end
+    end
+    
+    #puts total_error
+    
+    # If the answer got worse by moving the points, we are done
+    break if last_error and last_error < total_error
+    last_error = total_error
+    
+    # Move each of the points by learning rate times the gradient
+    n.times do |k|
+      loc[k][0] -= rate * grad[k][0]
+      loc[k][1] -= rate * grad[k][1]
+    end
+  end
+  
+  return loc
+  
+end
+
 
 
 require 'graph'
@@ -194,6 +258,10 @@ require 'graph'
 
 #kclusters = kcluster(data, :pearson, 10)
 
-wants, people, data = readfile('zebo.txt')
-clust = hcluster(data, :tanimoto)
-Graph.draw_dendogram(clust, wants, 'zebo.png')
+# wants, people, data = readfile('zebo.txt')
+# clust = hcluster(data, :tanimoto)
+# Graph.draw_dendogram(clust, wants, 'zebo.png')
+
+blognames, words, data = readfile('blogdata1.txt')
+coords = scaledown(data)
+Graph.draw2d(coords, blognames, 'blogs2d.png')

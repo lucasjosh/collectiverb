@@ -6,4 +6,5 @@ RMagick
 	If you are on Leopard, use this: http://onrails.org/articles/2007/11/03/installing-rmagick-on-leopard-without-macports-or-fink 
 	or
 	http://pastie.org/282226
-	
+
+There is currently an error being generated when trying to create the 2d image.  I'll be looking into that as time goes in.	

@@ -82,7 +82,7 @@ class Graph
       data.each_with_index do |d, i|
         x = (d[0] + 0.5) * 1000
         y = (d[1] + 0.5) * 1000
-        draw.text(x, y, labels[i])
+        draw.text(x, y, labels[i]) unless (labels[i] =~ /\d/) == 0
       end
       
       draw.draw(img)
