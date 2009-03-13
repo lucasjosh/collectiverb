@@ -1,4 +1,5 @@
 require 'rubygems'
+gem 'nokogiri', '= 1.1.1'
 require 'nokogiri'
 require 'set'
 require 'open-uri'
@@ -46,13 +47,13 @@ module SearchEngine
     
     def get_scored_list(rows, word_ids)
       total_scores = {}
-      weights = {}
+      weights = [[1.0, frequency_score(rows)]]
       rows.each do |row|
         total_scores[row[0]] = 0
       end
       
-      weights.each do |weigh, scores|
-        total_scores.each_key do |url|
+      weights.each do |weight, scores|
+        total_scores.keys.each do |url|
           total_scores[url] += weight * scores[url]
         end
       end
@@ -63,11 +64,47 @@ module SearchEngine
       @db.get_first_value("select url from urllist where rowid=#{id}")      
     end
     
+    def normalize_scores(scores, small_is_better = false)
+      vsmall = 0.00001
+      s = {}      
+      if small_is_better
+        min_score = scores.values.min
+        scores.each do |u, l|
+          s[u] = min_score.to_f / [vsmall, l].max
+        end
+      else
+        max_score = scores.values.max
+        max_score = vsmall if max_score == 0
+        scores.each do |u, c|
+          s[u] = c.to_f / max_score
+        end
+      end
+      s
+    end
+    
+    def frequency_score(rows)
+      counts = {}
+      rows.each {|row| counts[row[0]] = 0}
+      rows.each {|row| counts[row[0]] += 1}
+      
+      normalize_scores(counts)
+      
+    end
+    
+    def location_score(rows)
+      locations = {}
+      rows.each {|row| locations[row[0]] = 1000000}
+      rows.each do |row|
+        loc = row[1...-1].inject(0) {|sum, r| sum + r}
+        locations[row[0]] = loc if loc < locations[row[0]]
+      end
+      normalize_scores(locations, true)
+    end
+    
     def query(q)
       rows, word_ids = get_match_rows(q)
       scores = get_scored_list(rows, word_ids)
       ranked_scores = scores.sort {|a,b| b[1] <=> a[1]}
-      #ranked_scores = tmp_scores.invert
       ranked_scores.each do |urlid, score|
         puts "#{score} => #{get_url_name(urlid)}"
       end
@@ -85,7 +122,6 @@ module SearchEngine
     end
     
     def db_create
-      #return if File.exists?(@db_name)
       @db.transaction do
         @db.execute("create table urllist(url)")
         @db.execute("create table wordlist(word)")
@@ -184,7 +220,7 @@ module SearchEngine
             next
           end
          add_to_index(page, doc)
-         links = doc.xpath("//a")
+         links = doc.search("//a")
          links.each do |link|
            if link.attributes.key? 'href'
             url = URI.join(page, link.attributes['href'].to_s).to_s
@@ -202,10 +238,10 @@ module SearchEngine
   end
 end
 
-#c = SearchEngine::Crawler.new('engine.db')
+#c = SearchEngine::Crawler.new('full_engine.db')
 #c.db_create
-#pagelist = ['http://kiwitobes.com/wiki/Perl.html']
+#pagelist = ['http://kiwitobes.com/wiki/Categorical_list_of_programming_languages.html']
 #c.crawl(pagelist)
 
-s = SearchEngine::Searcher.new("engine.db")
+s = SearchEngine::Searcher.new("full_engine.db")
 s.query("functional programming")
