@@ -47,7 +47,7 @@ module SearchEngine
     
     def get_scored_list(rows, word_ids)
       total_scores = {}
-      weights = [[1.0, frequency_score(rows)]]
+      weights = [[1.0, frequency_score(rows)], [1.5, location_score(rows)]]
       rows.each do |row|
         total_scores[row[0]] = 0
       end
@@ -69,6 +69,7 @@ module SearchEngine
       s = {}      
       if small_is_better
         min_score = scores.values.min
+        min_score = vsmall if min_score == 0
         scores.each do |u, l|
           s[u] = min_score.to_f / [vsmall, l].max
         end
@@ -95,7 +96,7 @@ module SearchEngine
       locations = {}
       rows.each {|row| locations[row[0]] = 1000000}
       rows.each do |row|
-        loc = row[1...-1].inject(0) {|sum, r| sum + r}
+        loc = row[1...-1].inject(0) {|sum, r| sum + r.to_f}
         locations[row[0]] = loc if loc < locations[row[0]]
       end
       normalize_scores(locations, true)
