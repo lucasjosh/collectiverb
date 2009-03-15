@@ -49,7 +49,8 @@ module SearchEngine
       total_scores = {}
       weights = [[1.0, frequency_score(rows)], 
                  [1.0, location_score(rows)],
-                 [1.0, page_rank_score(rows)] 
+                 [1.0, page_rank_score(rows)],
+                 [1.0, link_text_score(rows, word_ids)]
                 ]
       rows.each do |row|
         total_scores[row[0]] = 0
@@ -167,6 +168,26 @@ module SearchEngine
       normalized_scores = {}
       pageranks.each do |u, l|
         normalized_scores[u] = l.to_f / maxrank.to_f
+      end
+      normalized_scores
+    end
+    
+    def link_text_score(rows, wordids)
+      link_scores = {}
+      rows.each {|row| link_scores[row[0]] = 0}
+      wordids.each do |wordid|
+        result = @db.execute("select link.fromid, link.toid from linkwords, link where wordid=#{wordid} and linkwords.linkid=link.rowid")
+        result.each do |fromid, toid|
+          if link_scores.key?(toid)
+            pr = @db.get_first_value("select score from pagerank where urlid=#{fromid}")
+            link_scores[toid] += pr.to_f
+          end
+        end        
+      end
+      max_score = link_scores.values.max
+      normalized_scores = {}
+      link_scores.each do |u, l|
+        normalized_scores[u] = l.to_f / max_score.to_f
       end
       normalized_scores
     end
@@ -314,5 +335,9 @@ end
 #c.crawl(pagelist)
 
 s = SearchEngine::Searcher.new("full_engine.db")
-s.query("functional programming")
+
+# Uncomment the below if you need to run the initial pagerank equation
 #s.calculate_page_rank
+
+s.query("functional programming")
+
