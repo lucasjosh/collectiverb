@@ -47,7 +47,10 @@ module SearchEngine
     
     def get_scored_list(rows, word_ids)
       total_scores = {}
-      weights = [[1.0, frequency_score(rows)], [1.5, location_score(rows)]]
+      weights = [[1.0, frequency_score(rows)], 
+                 [1.5, location_score(rows)],
+                 [1.5, distance_score(rows)] 
+                ]
       rows.each do |row|
         total_scores[row[0]] = 0
       end
@@ -100,6 +103,24 @@ module SearchEngine
         locations[row[0]] = loc if loc < locations[row[0]]
       end
       normalize_scores(locations, true)
+    end
+    
+    def distance_score(rows)
+      distances = {}
+      rows.each {|row| distances[row[0]] = 1.0}
+      return distances if rows[0].size <= 2
+      
+      min_distance = {}
+      rows.each {|row| min_distances[row[0]] = 1000000}
+      
+      rows.each do |row|
+        sum = 0
+        2.upto(row.size) do |i|
+          sum += (row[i] - row[i - 1]).abs
+        end
+        min_distance[row[0]] = dist if dist < min_distance[row[0]]
+      end
+      normalize_scores(min_distance, true)
     end
     
     def query(q)
@@ -245,4 +266,4 @@ end
 #c.crawl(pagelist)
 
 s = SearchEngine::Searcher.new("full_engine.db")
-s.query("functional programming")
+s.query("python")
