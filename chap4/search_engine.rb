@@ -48,8 +48,8 @@ module SearchEngine
     def get_scored_list(rows, word_ids)
       total_scores = {}
       weights = [[1.0, frequency_score(rows)], 
-                 [1.5, location_score(rows)],
-                 [1.5, distance_score(rows)] 
+                 [1.0, location_score(rows)],
+                 [1.0, page_rank_score(rows)] 
                 ]
       rows.each do |row|
         total_scores[row[0]] = 0
@@ -121,6 +121,54 @@ module SearchEngine
         min_distance[row[0]] = dist if dist < min_distance[row[0]]
       end
       normalize_scores(min_distance, true)
+    end
+    
+    def inbound_link_score(rows)
+      unique_urls = (rows.collect {|row| row[0]}).uniq
+      inbound_count = {}
+      unique_urls.each do |u|
+        v = @db.get_first_value("select count(*) from link where toid=#{u}")
+        inbound_count[u] = v
+      end
+      normalize_scores(inbound_count)
+    end
+    
+    def calculate_page_rank(iterations = 20)
+      @db.execute("drop table if exists pagerank")
+      @db.execute("create table pagerank(urlid primary key, score)")
+      @db.execute("insert into pagerank select rowid, 1.0 from urllist")
+      
+      1.upto(iterations) do |i|
+        puts "Iteration #{i}"
+        
+        
+        result = @db.execute("select rowid from urllist")
+        result.each do |urlid|
+          pr = 0.15
+          linker_result = @db.execute("select distinct fromid from link where toid=#{urlid}")
+          linker_result.each do |linker|
+            linking_pr = @db.get_first_value("select score from pagerank where urlid=#{linker}")
+            linking_count = @db.get_first_value("select count(*) from link where fromid=#{linker}")
+            pr += 0.85 * (linking_pr.to_f / linking_count.to_f)
+          end
+          @db.execute("update pagerank set score=#{pr} where urlid=#{urlid}")
+        end
+      end
+      
+    end
+    
+    def page_rank_score(rows)
+      pageranks = {}
+      rows.each do |row|
+        pr = @db.get_first_value("select score from pagerank where urlid=#{row[0]}")
+        pageranks[row[0]] = pr
+      end
+      maxrank = pageranks.values.max
+      normalized_scores = {}
+      pageranks.each do |u, l|
+        normalized_scores[u] = l.to_f / maxrank.to_f
+      end
+      normalized_scores
     end
     
     def query(q)
@@ -266,4 +314,5 @@ end
 #c.crawl(pagelist)
 
 s = SearchEngine::Searcher.new("full_engine.db")
-s.query("python")
+s.query("functional programming")
+#s.calculate_page_rank
