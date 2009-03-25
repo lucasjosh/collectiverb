@@ -79,9 +79,7 @@ class SearchNet
   
   def setup_network(word_ids, url_ids)
     @word_ids = word_ids
-    puts @word_ids.inspect
     @hidden_ids = get_all_hidden_ids(word_ids, url_ids)
-    puts @hidden_ids.inspect
     @url_ids = url_ids
     
     @ai = [1.0] * word_ids.size
@@ -131,6 +129,64 @@ class SearchNet
     @ao
   end
   
+  def dtanh(y)
+    1.0-y*y
+  end
+  
+  def back_propagate(targets, n=0.5)
+    output_deltas = [0.0] * @url_ids.size
+    @url_ids.size.times do |k|
+      error = targets[k].to_f - @ao[k].to_f
+      output_deltas[k] = dtanh(@ao[k]) * error
+    end
+    
+    hidden_deltas = [0.0] * @hidden_ids.size
+    @hidden_ids.size.times do |j|
+      error = 0.0
+      @url_ids.size.times do |k|
+        error = error + output_deltas[k].to_f * @wo[j][k].to_f
+      end
+      hidden_deltas[j] = dtanh(@ah[j]) * error
+    end
+    
+    @hidden_ids.size.times do |j|
+      @url_ids.size.times do |k|
+        change = output_deltas[k].to_f * @ah[j].to_f
+        @wo[j][k] = @wo[j][k].to_f + n*change
+      end
+    end
+    
+    @word_ids.size.times do |i|
+      @hidden_ids.size.times do |j|
+        change = hidden_deltas[j].to_f * @ai[i].to_f
+        @wi[i][j] = @wi[i][j].to_f + n*change
+      end
+    end
+  end
+  
+  def train_query(word_ids, url_ids, selected_url)
+    generate_hidden_node(word_ids, url_ids)
+    setup_network(word_ids, url_ids)
+    feed_forward
+    targets = [0.0] * url_ids.size
+    targets[url_ids.index(selected_url)] = 1.0
+    error = back_propagate(targets)
+    update_database
+  end
+  
+  def update_database
+    @word_ids.size.times do |i|
+      @hidden_ids.size.times do |j|
+        set_strength(@word_ids[i], @hidden_ids[j], 0, @wi[i][j])
+      end
+    end
+    @hidden_ids.size.times do |j|
+      @url_ids.size.times do |k|
+        set_strength(@hidden_ids[j], @url_ids[k], 1, @wo[j][k])
+      end
+    end
+  end
+  
   def get_result(word_ids, url_ids)
     setup_network(word_ids, url_ids)
     feed_forward
@@ -150,5 +206,5 @@ uWorldBank, uRiver, uEarth = 201, 202, 203
 # mynet.db.execute("select * from hiddenurl").each do | c|
 #   puts c
 # end
-
+mynet.train_query([wWorld, wBank], [uWorldBank, uRiver, uEarth], uWorldBank)
 puts mynet.get_result([wWorld, wBank], [uWorldBank, uRiver, uEarth])
